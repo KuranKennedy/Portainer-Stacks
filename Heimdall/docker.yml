@@ -1,0 +1,51 @@
+version: '3.8' 
+
+services:
+  heimdall:
+    image: lscr.io/linuxserver/heimdall:latest
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+    volumes:
+      - heimdall_data:/config
+    ports:
+      - target: 80 
+        published: 12100
+        protocol: tcp
+        mode: ingress 
+      - target: 443
+        published: 12200
+        protocol: tcp
+        mode: ingress
+    deploy: 
+      replicas: 1 
+      update_config: 
+        parallelism: 1
+        delay: 10s
+        monitor: 60s
+        max_failure_ratio: 0.3
+      restart_policy: 
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      labels: 
+        - "com.example.app=heimdall" 
+    networks:
+      - default_network 
+      - proxy-network
+
+volumes:
+  heimdall_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/heimdall" # Replace with the actual path to your datd on the NAS 
+
+networks:
+  default_network: 
+    driver: overlay 
+  proxy-network:
+    external: true

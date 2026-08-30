@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  home-assistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    environment:
+      - TZ=America/New_York
+#    This is needed for the initial configuration of home-assistant. You can then comment it out or simply delete it and reload the stack/container
+#    ports:           
+#      - "8123:8123"
+    volumes:
+      - home-assistant_data:/config
+    networks:
+      - proxy-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+
+networks:
+  proxy-network:
+    external: true
+
+volumes:
+  home-assistant_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/home-assistant" # Replace with the actual path to your datd on the NAS 

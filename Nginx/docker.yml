@@ -1,0 +1,80 @@
+version: '3.8'
+services:
+  app:
+    image: 'jc21/nginx-proxy-manager:latest'
+    # container_name is not used in Swarm mode
+    environment:
+      DB_MYSQL_HOST: "db"
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: "${USER}"
+      DB_MYSQL_PASSWORD__FILE: /run/secrets/nginx-secret # CHANGE THIS to a secure password. Also for whatever reason npm app requires a double underscore for this secret file option
+      DB_MYSQL_NAME: "${USER}"
+    ports:
+      - '80:80'
+      - '443:443'
+      - '81:81'
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    depends_on:
+      - db
+    networks:
+      - proxy-network
+    # The 'deploy' key is used for Swarm mode configuration
+    deploy:
+      restart_policy:
+        # 'any' is the correct condition for Swarm mode, equivalent to 'unless-stopped'
+        condition: any
+    secrets:
+      - nginx-secret
+
+  db:
+    image: 'jc21/mariadb-aria:latest'
+    # container_name is not used in Swarm mode
+    environment:
+      MYSQL_ROOT_PASSWORD__ILE: /run/secrets/nginx-secret # CHANGE THIS to a secure password
+      MYSQL_DATABASE: "${USER}"
+      MYSQL_USER: "${USER}"
+      MYSQL_PASSWORD__ILE: /run/secrets/nginx-secret # This MUST MATCH the password in the 'app' service
+    volumes:
+      - npm_db_data:/var/lib/mysql
+    networks:
+      - proxy-network
+    deploy:
+      restart_policy:
+        # 'any' is the correct condition for Swarm mode
+        condition: any
+    secrets:
+      - nginx-secret
+
+networks:
+  proxy-network:
+    # This tells the stack to use a network that already exists
+    external: true
+
+volumes:
+  # Using named volumes is best practice for Swarm
+  npm_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/nginx/npm_data"
+      
+  npm_letsencrypt:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/nginx/npm_letsencrypt"
+      
+  npm_db_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/nginx/npm_db_data"
+
+secrets:
+  nginx-secret:
+    external: true
