@@ -1,0 +1,75 @@
+version: "3.8"
+services:
+  # ---------------------------------------------------------------------------
+  # 1. Podgrab: Self-hosted podcast manager
+  # ---------------------------------------------------------------------------
+  podgrab:
+    image: akhilrex/podgrab
+    container_name: podgrab
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - podgrab-config:/config
+      - podgrab-data:/assets
+    environment:
+      - CHECK_FREQUENCY=30
+  # ---------------------------------------------------------------------------
+  # 2. Audiobookshelf: Self-hosted audiobook and podcast server
+  # ---------------------------------------------------------------------------
+  audiobookshelf:
+    image: advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    ports:
+      - 13378:80
+    volumes:
+      - audiobookshelf-config:/config
+      - audiobookshelf-metadata:/metadata
+      - audiobookshelf-audiobooks:/audiobooks
+      - audiobookshelf-podcast:/podcasts
+    environment:
+      - TZ=America/New_York
+    restart: unless-stopped
+
+volumes:
+  podgrab-config:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/podgrab/podgrab-config"
+
+  podgrab-data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/podgrab/podgrab-data"
+
+  audiobookshelf-config:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/audiobookshelf/audiobookshelf-config"
+
+  audiobookshelf-metadata:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/audiobookshelf/audiobookshelf-metadata"
+
+  audiobookshelf-audiobooks:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/audiobookshelf/audiobookshelf-audiobooks"
+
+  audiobookshelf-podcast:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/audiobookshelf/audiobookshelf-podcast"

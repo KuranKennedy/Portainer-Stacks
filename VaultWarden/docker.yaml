@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: vaultwarden
+      POSTGRES_USER: vaultwardenuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # Change this!
+    volumes:
+      - vaultwarden_db_data:/var/lib/postgresql/data
+ # The database now connects directly to the shared proxy-network
+    networks:
+      - proxy-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -d vaultwarden -U vaultwardenuser"]
+      timeout: 45s
+      interval: 10s
+      retries: 5
+    deploy:
+      restart_policy:
+        condition: any
+
+
+  vaultwarden:
+    image: vaultwarden/server:latest
+    environment:
+      DOMAIN: "https://vault.kuranlabs.com" # IMPORTANT: Change this to your actual domain
+      ADMIN_TOKEN: ${VW_ADMIN_TOKEN} # Change this!
+      DATABASE_URL: "postgresql://vaultwardenuser:${DB_PASSWORD}@db:5432/vaultwarden"
+    volumes:
+      - vaultwarden_app_data:/data
+    networks:
+      - proxy-network
+    deploy:
+      restart_policy:
+        condition: any
+        
+volumes:
+  vaultwarden_db_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/vaultwarden/vaultwarden_db_data"
+
+  vaultwarden_app_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/vaultwarden/vaultwarden_app_data"
+
+networks:
+  proxy-network:
+    external: true # Tells this stack to use the network you created earlier
