@@ -1,0 +1,73 @@
+services:
+  nebula-sync:
+    image: ghcr.io/lovelaze/nebula-sync:latest
+    container_name: nebula-sync
+    environment:
+    - PRIMARY=https://10.10.10.252|${password}
+    - REPLICAS=https://10.10.10.251|${password},https://10.10.10.250|${password}
+    - FULL_SYNC=false
+    - RUN_GRAVITY=false
+    - CRON=0 * * * *
+
+    - TZ=America/New_York
+
+    - SYNC_CONFIG_DNS=true
+    - SYNC_CONFIG_DHCP=false	
+    - SYNC_CONFIG_NTP=false	
+    - SYNC_CONFIG_RESOLVER=false	
+    - SYNC_CONFIG_DATABASE=false	
+    - SYNC_CONFIG_MISC=false	
+    - SYNC_CONFIG_DEBUG=false	
+
+    - SYNC_GRAVITY_DHCP_LEASES=false	
+    - SYNC_GRAVITY_GROUP=false	
+    - SYNC_GRAVITY_AD_LIST=true	
+    - SYNC_GRAVITY_AD_LIST_BY_GROUP=true	
+    - SYNC_GRAVITY_DOMAIN_LIST=true	
+    - SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP=true	
+    - SYNC_GRAVITY_CLIENT=false	
+    - SYNC_GRAVITY_CLIENT_BY_GROUP=false	
+
+services:
+  nebula-sync:
+    image: ghcr.io/lovelaze/nebula-sync:latest
+    container_name: nebula-sync
+    restart: unless-stopped
+    secrets:
+      - primary_config
+      - replicas_config
+    environment:
+      # Point to the securely mounted secret files
+      PRIMARY_FILE: "/run/secrets/primary_config"
+      REPLICAS_FILE: "/run/secrets/replicas_config"
+      
+      FULL_SYNC: "false"
+      RUN_GRAVITY: "false"
+      CRON: "0 * * * *"
+      TZ: "America/New_York"
+
+      # Config Sync Options
+      SYNC_CONFIG_DNS: "true"
+      SYNC_CONFIG_DHCP: "false"
+      SYNC_CONFIG_NTP: "false"
+      SYNC_CONFIG_RESOLVER: "false"
+      SYNC_CONFIG_DATABASE: "false"
+      SYNC_CONFIG_MISC: "false"
+      SYNC_CONFIG_DEBUG: "false"
+
+      # Gravity Sync Options
+      SYNC_GRAVITY_DHCP_LEASES: "false"
+      SYNC_GRAVITY_GROUP: "false"
+      SYNC_GRAVITY_AD_LIST: "true"
+      SYNC_GRAVITY_AD_LIST_BY_GROUP: "true"
+      SYNC_GRAVITY_DOMAIN_LIST: "true"
+      SYNC_GRAVITY_DOMAIN_LIST_BY_GROUP: "true"
+      SYNC_GRAVITY_CLIENT: "false"
+      SYNC_GRAVITY_CLIENT_BY_GROUP: "false"
+
+# Tell Docker to look for these externally created Portainer secrets
+secrets:
+  primary_config:
+    external: true
+  replicas_config:
+    external: true
