@@ -1,0 +1,166 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. NetBox Web Application
+  # ---------------------------------------------------------------------------
+  netbox:
+    image: netboxcommunity/netbox:latest
+    depends_on:
+      - postgres
+      - redis
+      - redis-cache
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=netbox
+      - DB_USER=netbox
+      - DB_PASSWORD=netbox_secure_password # Consider using Portainer Secrets instead
+      - REDIS_HOST=redis
+      - REDIS_CACHE_HOST=redis-cache
+      - SECRET_KEY=ByJd81Z1NOYju0AwvrYUbowHtonxVFitlXbszMM1N5O16KDWWH
+      - SUPERUSER_NAME=kuran
+      - SUPERUSER_EMAIL=kuran@kuranlabs.com
+      - SUPERUSER_PASSWORD=your_strong_admin_password
+      - SUPERUSER_API_TOKEN=0123456789abcdef0123456789abcdef01234567 # Must be exactly 40 characters
+      - ALLOWED_HOSTS=*
+      - CSRF_TRUSTED_ORIGINS=https://netbox.kuranlabs.com # Replace with your actual URL
+    volumes:
+      - netbox_media_data:/opt/netbox/netbox/media
+    networks:
+      - proxy-network
+      - netbox_internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role == worker"
+      restart_policy:
+        condition: on-failure
+
+  # ---------------------------------------------------------------------------
+  # 2. NetBox Background Worker
+  # ---------------------------------------------------------------------------
+  netbox-worker:
+    image: netboxcommunity/netbox:latest
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=netbox
+      - DB_USER=netbox
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_CACHE_HOST=redis-cache
+      - SECRET_KEY=ByJd81Z1NOYju0AwvrYUbowHtonxVFitlXbszMM1N5O16KDWWH
+      - SUPERUSER_NAME=kuran
+      - SUPERUSER_EMAIL=kuran@kuranlabs.com
+      - SUPERUSER_PASSWORD=${ADMIN_PASSWORD}
+      - SUPERUSER_API_TOKEN=0123456789abcdef0123456789abcdef01234567 # Must be exactly 40 characters
+    networks:
+      - netbox_internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role == worker"
+      restart_policy:
+        condition: on-failure
+
+  # ---------------------------------------------------------------------------
+  # 3. PostgreSQL Database
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=netbox
+      - POSTGRES_USER=netbox
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - netbox_postgres_data:/var/lib/postgresql/data
+    networks:
+      - netbox_internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role == worker"
+      restart_policy:
+        condition: on-failure
+
+  # ---------------------------------------------------------------------------
+  # 4. Redis (Main & Cache)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: valkey/valkey:8-alpine
+    command:
+      - sh
+      - -c
+      - valkey-server --appendonly yes --requirepass ""
+    volumes:
+      - netbox_redis_data:/data
+    networks:
+      - netbox_internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role == worker"
+      restart_policy:
+        condition: on-failure
+
+  redis-cache:
+    image: valkey/valkey:8-alpine
+    command:
+      - sh
+      - -c
+      - valkey-server --requirepass ""
+    networks:
+      - netbox_internal
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "node.role == worker"
+      restart_policy:
+        condition: on-failure
+
+# ---------------------------------------------------------------------------
+# Network & Storage Definitions
+# ---------------------------------------------------------------------------
+networks:
+  # External network allowing Nginx Proxy Manager to route to the NetBox UI
+  proxy-network:
+    external: true
+  # Internal backend network so NetBox can communicate with its DB and Redis safely
+  netbox_internal:
+    driver: overlay
+
+volumes:
+  # Maps media directly to your Synology NAS
+  netbox_media_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/netbox/media"
+
+  # Maps the PostgreSQL database to your Synology NAS
+  netbox_postgres_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/netbox/postgres"
+
+  # Maps the Redis state to your Synology NAS
+  netbox_redis_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/netbox/redis"

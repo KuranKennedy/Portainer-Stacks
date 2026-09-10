@@ -1,0 +1,44 @@
+# For configuration options and examples, please see:
+# https://gethomepage.dev/configs/services/
+
+- Infrastructure_&_Management:
+    - Portainer:
+        icon: portainer.png
+        href: https://10.10.10.71:9443
+        description: Container Management UI
+        widget:
+          type: portainer
+          url: https://10.10.10.71:9443
+          key: "ptr_72UAT/RJKuyymY1qC+JosTyU/T6+L5fpbXFNi0NOlJ0="
+          env: 5
+
+- My Second Group:
+    - My Second Service:
+        href: http://localhost/
+        description: Homepage is the best
+
+- My Third Group:
+    - My Third Service:
+        href: http://localhost/
+        description: Homepage is 😎
+
+- Media_&_Entertainment:
+    - K-Plex 01:
+        icon: plex.png
+        href: http://10.10.10.41:32400/web
+        description: Home Media Server
+        widget:
+          type: plex
+          url: http://10.10.10.41:32400
+          key: "P8g1sFEyx1XVDrfyPdjQ"
+          fields: ["streams", "transcoding", "bandwidth"]
+
+    - W-Plex 01:
+        icon: plex.png
+        href: http://24.178.117.226:32401/web
+        description: Home Media Server
+        widget:
+          type: plex
+          url: http://24.178.117.226:32401
+          key: "P8g1sFEyx1XVDrfyPdjQ"
+          fields: ["streams", "transcoding", "bandwidth"]

@@ -9,6 +9,8 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    networks:
+      - proxy-network
     volumes:
       - podgrab-config:/config
       - podgrab-data:/assets
@@ -22,6 +24,8 @@ services:
     container_name: audiobookshelf
     ports:
       - 13378:80
+    networks:
+      - proxy-network
     volumes:
       - audiobookshelf-config:/config
       - audiobookshelf-metadata:/metadata
@@ -30,6 +34,10 @@ services:
     environment:
       - TZ=America/New_York
     restart: unless-stopped
+
+networks:
+  proxy-network:
+    external: true
 
 volumes:
   podgrab-config:

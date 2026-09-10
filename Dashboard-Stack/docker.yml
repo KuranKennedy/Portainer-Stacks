@@ -8,8 +8,10 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    networks:
+      - proxy-network
     volumes:
-      - /opt/homepage/config:/app/config
+      - homepage_data:/app/config
       - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only Docker socket for container widgets
     environment:
       HOMEPAGE_ALLOWED_HOSTS: "*"
@@ -19,10 +21,10 @@ services:
    
     deploy:
       replicas: 1
-      placement:
-        constraints:
-          # Pins container to the node where local files/docker socket reside
-          - node.role == manager
+      # placement:
+      #   constraints:
+      #     # Pins container to the node where local files/docker socket reside
+      #     - node.role == manager
       restart_policy:
         condition: on-failure
 
@@ -35,6 +37,8 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    networks:
+      - proxy-network
     volumes:
       - uptime_kuma:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro # Optional: container status monitoring
@@ -48,24 +52,151 @@ services:
     restart: unless-stopped
     ports:
       - "8090:8090"
+    networks:
+      - proxy-network
     volumes:
       - beszel_data:/beszel_data
     environment:
       - TZ=America/New_York
 
-# These are attached to your network attached storage
+networks:
+  proxy-network:
+    external: true
+
 volumes:
+  homepage_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/homepage"    
+
   uptime_kuma:
     driver: local
     driver_opts:
       type: nfs
       o: addr=10.10.10.200,rw,nfsvers=4
-      device: ":/volume1/HomeLab/docker_services/uptime_kuma" # Replace with the actual path to your datd on the NAS
+      device: ":/volume1/HomeLab/docker_services/uptime_kuma"
   
-
+  # ADDED: This connects Sonarr to where your TV shows and downloads actually live.
   beszel_data:
     driver: local
     driver_opts:
       type: nfs
       o: addr=10.10.10.200,rw,nfsvers=4
-      device: ":/volume1/HomeLab/docker_services/beszel" # Replace with the actual path to your datd on the NAS
+      device: ":/volume1/HomeLab/docker_services/beszel" # Replace with the actual path to your media/downloads on the Synology
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+      services:
+  # ---------------------------------------------------------------------------
+  # 1. Homepage: Daily Single-Pane-of-Glass Dashboard
+  # ---------------------------------------------------------------------------
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - proxy-network
+    volumes:
+      - homepage_data:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Read-only Docker socket for container widgets
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: "*"
+      PUID: 1000
+      PGID: 1000
+      TZ: America/New_York # Set to your timezone (e.g., America/New_York)
+   
+    deploy:
+      replicas: 1
+      # placement:
+      #   constraints:
+      #     # Pins container to the node where local files/docker socket reside
+      #     - node.role == manager
+      restart_policy:
+        condition: on-failure
+
+  # ---------------------------------------------------------------------------
+  # 2. Uptime Kuma: Black-box Availability & Alerting Watchdog
+  # ---------------------------------------------------------------------------
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    networks:
+      - proxy-network
+    volumes:
+      - uptime_kuma:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Optional: container status monitoring
+
+  # ---------------------------------------------------------------------------
+  # 3. Beszel Hub: Lightweight Multi-OS Metrics & Telemetry Server
+  # ---------------------------------------------------------------------------
+  beszel-hub:
+    image: henrygd/beszel:latest
+    container_name: beszel-hub
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    networks:
+      - proxy-network
+    volumes:
+      - beszel_data:/beszel_data
+    environment:
+      - TZ=America/New_York
+
+networks:
+  proxy-network:
+    external: true
+
+volumes:
+  homepage_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/homepage"    
+
+  uptime_kuma:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/uptime_kuma"
+  
+  # ADDED: This connects Sonarr to where your TV shows and downloads actually live.
+  beszel_data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=10.10.10.200,rw,nfsvers=4
+      device: ":/volume1/HomeLab/docker_services/beszel" # Replace with the actual path to your media/downloads on the Synology
